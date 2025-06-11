@@ -1,0 +1,96 @@
+---
+- name: Instalar y configurar Moodle
+  hosts: localhost
+  connection: local
+  become: true
+
+  vars:
+    moodle_dir: /var/www/html/moodle
+    moodle_zip: /tmp/moodle.zip
+    ansible_python_interpreter: /usr/bin/python3
+    db_root_user: root
+    db_root_pass: root1234
+    db_user: adminmoodle
+    db_pass: admin1234
+    db_name: moodle
+
+  tasks:
+    - name: Comprobar ruta de Python usada
+      command: which python3
+      register: python_path
+
+    - debug:
+        var: python_path.stdout
+
+    - name: Instalar dependencias necesarias (sin curl)
+      dnf:
+        name:
+          - httpd
+          - php
+          - php-mysqlnd
+          - php-xml
+          - php-curl
+          - php-zip
+          - php-intl
+          - php-gd
+          - php-soap
+          - php-mbstring
+          - unzip
+          - mariadb105-server
+        state: present
+
+    - name: Iniciar y habilitar MariaDB
+      service:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Crear base de datos de Moodle
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_pass }}"
+
+    - name: Crear usuario de base de datos para Moodle
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL PRIVILEGES"
+        host: localhost
+        state: present
+        login_user: "{{ db_root_user }}"
+        login_password: "{{ db_root_pass }}"
+
+    - name: Crear directorio para Moodle
+      file:
+        path: "{{ moodle_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Descargar Moodle desde GitHub
+      get_url:
+        url: https://github.com/moodle/moodle/archive/refs/tags/v401.zip
+        dest: "{{ moodle_zip }}"
+        headers:
+          User-Agent: "Mozilla/5.0"
+
+    - name: Extraer Moodle
+      unarchive:
+        src: "{{ moodle_zip }}"
+        dest: "{{ moodle_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Establecer permisos a Moodle
+      file:
+        path: "{{ moodle_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        mode: '0755'
+
+    - name: Reiniciar Apache
+      service:
+        name: httpd
+        state: restarted

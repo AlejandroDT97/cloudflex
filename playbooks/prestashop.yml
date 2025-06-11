@@ -1,0 +1,34 @@
+---
+- name: Instalar PrestaShop
+  hosts: localhost
+  connection: local
+  become: true
+
+  vars:
+    ps_dir: /var/www/html/prestashop
+
+  tasks:
+    - name: Descargar PrestaShop
+      get_url:
+        url: https://github.com/PrestaShop/PrestaShop/releases/download/8.1.4/prestashop_8.1.4.zip
+        dest: /tmp/prestashop.zip
+
+    - name: Crear directorio para PrestaShop
+      file:
+        path: "{{ ps_dir }}"
+        state: directory
+
+    - name: Extraer PrestaShop
+      unarchive:
+        src: /tmp/prestashop.zip
+        dest: "{{ ps_dir }}"
+        remote_src: yes
+        creates: "{{ ps_dir }}/index.php"
+
+    - name: Establecer permisos a PrestaShop
+      file:
+        path: "{{ ps_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        mode: '0755'

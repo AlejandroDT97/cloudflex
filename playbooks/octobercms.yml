@@ -1,0 +1,74 @@
+---
+- name: Instalar y configurar OctoberCMS
+  hosts: all
+  become: yes
+
+  vars:
+    octobercms_db_name: octobercms
+    octobercms_db_user: octobercms_user
+    octobercms_db_password: octobercms1234
+
+  tasks:
+    - name: Instalar dependencias necesarias
+      apt:
+        name:
+          - apache2
+          - php
+          - php-mysql
+          - php-xml
+          - php-mbstring
+          - php-curl
+          - php-zip
+          - unzip
+          - mariadb-server
+        state: present
+        update_cache: yes
+
+    - name: Crear base de datos para OctoberCMS
+      community.mysql.mysql_db:
+        name: "{{ octobercms_db_name }}"
+        state: present
+        login_user: cmsadmin
+        login_password: cms1234
+
+    - name: Crear usuario de base de datos para OctoberCMS
+      community.mysql.mysql_user:
+        name: "{{ octobercms_db_user }}"
+        password: "{{ octobercms_db_password }}"
+        priv: "{{ octobercms_db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: cmsadmin
+        login_password: cms1234
+
+    - name: Descargar OctoberCMS
+      get_url:
+        url: https://github.com/octobercms/october/archive/refs/heads/develop.zip
+        dest: /tmp/octobercms.zip
+
+    - name: Crear directorio para OctoberCMS
+      file:
+        path: /var/www/html/octobercms
+        state: directory
+        owner: apache
+        group: apache
+        mode: '0755'
+
+    - name: Extraer OctoberCMS
+      unarchive:
+        src: /tmp/octobercms.zip
+        dest: /var/www/html/octobercms
+        remote_src: yes
+
+    - name: Establecer permisos
+      file:
+        path: /var/www/html/octobercms
+        state: directory
+        recurse: yes
+        owner: apache
+        group: apache
+
+    - name: Reiniciar Apache
+      service:
+        name: apache2
+        state: restarted

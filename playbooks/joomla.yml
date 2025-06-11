@@ -1,0 +1,34 @@
+---
+- name: Instalar Joomla
+  hosts: localhost
+  connection: local
+  become: true
+
+  vars:
+    cms_dir: /var/www/html/joomla
+
+  tasks:
+    - name: Descargar Joomla
+      get_url:
+        url: https://downloads.joomla.org/cms/joomla4/4-4-1/Joomla_4-4-1-Stable-Full_Package.zip?format=zip
+        dest: /tmp/joomla.zip
+
+    - name: Crear directorio de destino
+      file:
+        path: "{{ cms_dir }}"
+        state: directory
+
+    - name: Extraer Joomla
+      unarchive:
+        src: /tmp/joomla.zip
+        dest: "{{ cms_dir }}"
+        remote_src: yes
+        creates: "{{ cms_dir }}/index.php"
+
+    - name: Establecer permisos a Joomla
+      file:
+        path: "{{ cms_dir }}"
+        owner: apache
+        group: apache
+        recurse: yes
+        mode: '0755'
