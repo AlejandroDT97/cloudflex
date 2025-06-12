@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->execute([$hash, $correo]);
 
                 // Enviar correo automático
-                enviarCorreo($correo, 'Recuperacion de contraseña CMSFlex', "
+                enviarCorreo($correo, 'Recuperacion de contrasena CMSFlex', "
                     <h2>Contraseña actualizada</h2>
                     <p>Hola <strong>{$usuario['usuario']}</strong>, tu contraseña ha sido restablecida correctamente.</p>
                 ");
