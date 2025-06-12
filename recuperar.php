@@ -1,10 +1,6 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require_once 'config/db.php';
-require_once 'correo.php';
+require 'correo.php';
 
 $mensaje = '';
 
@@ -22,17 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE USUARIO SET contrasena = ? WHERE correo = ?");
             $stmt->execute([$hash, $correo]);
 
-            enviarCorreo($correo, "Recuperacion de contrasena CMSFlex", "
+            // Enviar correo automático
+            enviarCorreo($correo, 'Recuperacion de contraseña CMSFlex', "
                 <h2>Contraseña actualizada</h2>
                 <p>Hola <strong>{$usuario['usuario']}</strong>, tu contraseña ha sido restablecida correctamente.</p>
             ");
 
-            $mensaje = 'Contrasena actualizada correctamente.';
+            $mensaje = '<span class="text-success">Contraseña actualizada correctamente.</span>';
         } else {
-            $mensaje = 'No existe ninguna cuenta con ese correo.';
+            $mensaje = '<span class="text-danger">No existe ninguna cuenta con ese correo.</span>';
         }
     } else {
-        $mensaje = 'Por favor, completa todos los campos.';
+        $mensaje = '<span class="text-danger">Por favor, completa todos los campos.</span>';
     }
 }
 ?>
@@ -43,19 +40,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Recuperar contraseña</title>
     <link rel="stylesheet" href="assets/css/estilos.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Recuperar Contraseña</h2>
-        <form method="POST">
-            <label>Correo electrónico:</label><br>
-            <input type="email" name="correo" required><br>
-            <label>Nueva contraseña:</label><br>
-            <input type="password" name="nueva_contrasena" required><br><br>
-            <input type="submit" value="Actualizar contraseña">
-        </form>
-        <p><?php echo htmlspecialchars($mensaje); ?></p>
-        <p><a href="login.php">Volver a iniciar sesión</a></p>
-    </div>
+    <?php include 'header.php'; ?>
+    <?php include 'nav.php'; ?>
+
+    <main class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 login-container">
+                <h2 class="text-center mb-4">Recuperar Contraseña</h2>
+
+                <?php if (!empty($mensaje)): ?>
+                    <div class="text-center mb-3"><?= $mensaje ?></div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Correo electrónico:</label>
+                        <input type="email" name="correo" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nueva contraseña:</label>
+                        <input type="password" name="nueva_contrasena" class="form-control" required>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="login.php">Volver a iniciar sesión</a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <?php include 'footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

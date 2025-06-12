@@ -1,6 +1,6 @@
 <?php
 require_once 'config/db.php';
-require_once 'correo.php';
+require 'correo.php';
 session_start();
 
 $mensaje = '';
@@ -10,36 +10,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $usuario = $_POST['usuario'];
     $correo = $_POST['correo'];
     $contrasena = $_POST['contrasena'];
-    $confirmar_contrasena = $_POST['confirmar_contrasena'];
+    $confirmar = $_POST['confirmar'];
 
-    if ($contrasena !== $confirmar_contrasena) {
-        $mensaje = "Las contraseñas no coinciden.";
-    } else {
+    if ($contrasena === $confirmar) {
         $hash = password_hash($contrasena, PASSWORD_DEFAULT);
 
         try {
             $stmt = $pdo->prepare("INSERT INTO USUARIO (nombre, usuario, correo, contrasena) VALUES (?, ?, ?, ?)");
             $stmt->execute([$nombre, $usuario, $correo, $hash]);
 
-            // Enviar correo al usuario
-            enviarCorreo($correo, "Registro en CMSFlex", "
+            // Enviar correo de bienvenida
+            enviarCorreo($correo, 'Registro en CMSFlex', "
                 <h2>Bienvenido a CMSFlex</h2>
                 <p>Hola <strong>$usuario</strong>, te has registrado correctamente en nuestra plataforma.</p>
             ");
 
-            // Obtener el id del usuario recién creado
             $stmt = $pdo->prepare("SELECT id_usu, usuario FROM USUARIO WHERE correo = ?");
             $stmt->execute([$correo]);
-            $lineausuario = $stmt->fetch();
+            $linea = $stmt->fetch();
 
-            $_SESSION['id_usu'] = $lineausuario['id_usu'];
-            $_SESSION['usuario'] = $lineausuario['usuario'];
+            $_SESSION['id_usu'] = $linea['id_usu'];
+            $_SESSION['usuario'] = $linea['usuario'];
 
             header("Location: dashboard.php");
             exit();
         } catch (PDOException $e) {
             $mensaje = "Error al registrar usuario: " . $e->getMessage();
         }
+    } else {
+        $mensaje = "Las contraseñas no coinciden.";
     }
 }
 ?>
@@ -50,20 +49,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>Registro</title>
     <link rel="stylesheet" href="assets/css/estilos.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Registro de Usuario</h2>
-        <form method="post">
-            <input type="text" name="nombre" placeholder="Nombre" required><br>
-            <input type="text" name="usuario" placeholder="Nombre de usuario" required><br>
-            <input type="email" name="correo" placeholder="Correo electrónico" required><br>
-            <input type="password" name="contrasena" placeholder="Contraseña" required><br>
-            <input type="password" name="confirmar_contrasena" placeholder="Confirmar contraseña" required><br><br>
-            <input type="submit" value="Registrar">
-        </form>
-        <p><a href="login.php">¿Ya tienes cuenta? Inicia sesión</a></p>
-        <p style="color:red"><?= htmlspecialchars($mensaje) ?></p>
-    </div>
+    <?php include 'header.php'; ?>
+    <?php include 'nav.php'; ?>
+
+    <main class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 login-container">
+                <h2 class="text-center mb-4">Registro de Usuario</h2>
+                <?php if (!empty($mensaje)): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($mensaje) ?></div>
+                <?php endif; ?>
+
+                <form method="post">
+                    <input type="text" name="nombre" placeholder="Nombre" required><br>
+                    <input type="text" name="usuario" placeholder="Nombre de usuario" required><br>
+                    <input type="email" name="correo" placeholder="Correo electrónico" required><br>
+                    <input type="password" name="contrasena" placeholder="Contraseña" required><br>
+                    <input type="password" name="confirmar" placeholder="Confirmar contraseña" required><br>
+                    <input type="submit" value="Registrar">
+                </form>
+                <p><a href="login.php">¿Ya tienes cuenta? Inicia sesión</a></p>
+            </div>
+        </div>
+    </main>
+
+    <?php include 'footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
