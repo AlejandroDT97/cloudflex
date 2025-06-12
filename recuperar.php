@@ -14,17 +14,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $usuario = $stmt->fetch();
 
         if ($usuario) {
-            $hash = password_hash($nueva_contrasena, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE USUARIO SET contrasena = ? WHERE correo = ?");
-            $stmt->execute([$hash, $correo]);
+            if (password_verify($nueva_contrasena, $usuario['contrasena'])) {
+                $mensaje = '<span class="text-danger">La nueva contraseña no puede ser igual a la anterior.</span>';
+            } else {
+                $hash = password_hash($nueva_contrasena, PASSWORD_DEFAULT);
+                $stmt = $pdo->prepare("UPDATE USUARIO SET contrasena = ? WHERE correo = ?");
+                $stmt->execute([$hash, $correo]);
 
-            // Enviar correo automático
-            enviarCorreo($correo, 'Recuperacion de contraseña CMSFlex', "
-                <h2>Contraseña actualizada</h2>
-                <p>Hola <strong>{$usuario['usuario']}</strong>, tu contraseña ha sido restablecida correctamente.</p>
-            ");
+                // Enviar correo automático
+                enviarCorreo($correo, 'Recuperacion de contraseña CMSFlex', "
+                    <h2>Contraseña actualizada</h2>
+                    <p>Hola <strong>{$usuario['usuario']}</strong>, tu contraseña ha sido restablecida correctamente.</p>
+                ");
 
-            $mensaje = '<span class="text-success">Contraseña actualizada correctamente.</span>';
+                $mensaje = '<span class="text-success">Contraseña actualizada correctamente.</span>';
+            }
         } else {
             $mensaje = '<span class="text-danger">No existe ninguna cuenta con ese correo.</span>';
         }
