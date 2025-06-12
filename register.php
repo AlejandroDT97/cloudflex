@@ -1,5 +1,6 @@
 <?php
 require_once 'config/db.php';
+require_once 'correo.php';
 session_start();
 
 $mensaje = '';
@@ -8,23 +9,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nombre = $_POST['nombre'];
     $usuario = $_POST['usuario'];
     $correo = $_POST['correo'];
-    $contrasena = password_hash($_POST['contrasena'], PASSWORD_DEFAULT);
+    $contrasena = $_POST['contrasena'];
+    $confirmar_contrasena = $_POST['confirmar_contrasena'];
 
-    try {
-        $stmt = $pdo->prepare("INSERT INTO USUARIO (nombre, usuario, correo, contrasena) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$nombre, $usuario, $correo, $contrasena]);
+    if ($contrasena !== $confirmar_contrasena) {
+        $mensaje = "Las contraseñas no coinciden.";
+    } else {
+        $hash = password_hash($contrasena, PASSWORD_DEFAULT);
 
-        $stmt = $pdo->prepare("SELECT id_usu, usuario FROM USUARIO WHERE correo = ?");
-        $stmt->execute([$correo]);
-        $lineausuario = $stmt->fetch();
+        try {
+            $stmt = $pdo->prepare("INSERT INTO USUARIO (nombre, usuario, correo, contrasena) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$nombre, $usuario, $correo, $hash]);
 
-        $_SESSION['id_usu'] = $lineausuario['id_usu'];
-        $_SESSION['usuario'] = $lineausuario['usuario'];
+            // Enviar correo al usuario
+            enviarCorreo($correo, "Registro en CMSFlex", "
+                <h2>Bienvenido a CMSFlex</h2>
+                <p>Hola <strong>$usuario</strong>, te has registrado correctamente en nuestra plataforma.</p>
+            ");
 
-        header("Location: dashboard.php");
-        exit();
-    } catch (PDOException $e) {
-        $mensaje = "Error al registrar usuario: " . $e->getMessage();
+            // Obtener el id del usuario recién creado
+            $stmt = $pdo->prepare("SELECT id_usu, usuario FROM USUARIO WHERE correo = ?");
+            $stmt->execute([$correo]);
+            $lineausuario = $stmt->fetch();
+
+            $_SESSION['id_usu'] = $lineausuario['id_usu'];
+            $_SESSION['usuario'] = $lineausuario['usuario'];
+
+            header("Location: dashboard.php");
+            exit();
+        } catch (PDOException $e) {
+            $mensaje = "Error al registrar usuario: " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -41,9 +56,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <h2>Registro de Usuario</h2>
         <form method="post">
             <input type="text" name="nombre" placeholder="Nombre" required><br>
-	    <input type="text" name="usuario" placeholder="Nombre de usuario" required><br>
+            <input type="text" name="usuario" placeholder="Nombre de usuario" required><br>
             <input type="email" name="correo" placeholder="Correo electrónico" required><br>
             <input type="password" name="contrasena" placeholder="Contraseña" required><br>
+            <input type="password" name="confirmar_contrasena" placeholder="Confirmar contraseña" required><br><br>
             <input type="submit" value="Registrar">
         </form>
         <p><a href="login.php">¿Ya tienes cuenta? Inicia sesión</a></p>

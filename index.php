@@ -1,4 +1,6 @@
-<!-- index.php -->
+<?php include 'header.php'; ?>
+<?php include 'nav.php'; ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -12,8 +14,6 @@
 </head>
 <body>
 
-<?php include 'header.php'; ?>
-<?php include 'nav.php'; ?>
 
 <main class="container my-5">
 

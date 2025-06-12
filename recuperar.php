@@ -1,5 +1,10 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once 'config/db.php';
+require_once 'correo.php';
 
 $mensaje = '';
 
@@ -8,15 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nueva_contrasena = $_POST['nueva_contrasena'] ?? '';
 
     if (!empty($correo) && !empty($nueva_contrasena)) {
-        $stmt = $pdo->prepare("SELECT * FROM USUARIOS WHERE correo = ?");
+        $stmt = $pdo->prepare("SELECT * FROM USUARIO WHERE correo = ?");
         $stmt->execute([$correo]);
         $usuario = $stmt->fetch();
 
         if ($usuario) {
             $hash = password_hash($nueva_contrasena, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE USUARIOS SET contraseña = ? WHERE correo = ?");
+            $stmt = $pdo->prepare("UPDATE USUARIO SET contrasena = ? WHERE correo = ?");
             $stmt->execute([$hash, $correo]);
-            $mensaje = 'Contraseña actualizada correctamente.';
+
+            enviarCorreo($correo, "Recuperacion de contrasena CMSFlex", "
+                <h2>Contraseña actualizada</h2>
+                <p>Hola <strong>{$usuario['usuario']}</strong>, tu contraseña ha sido restablecida correctamente.</p>
+            ");
+
+            $mensaje = 'Contrasena actualizada correctamente.';
         } else {
             $mensaje = 'No existe ninguna cuenta con ese correo.';
         }

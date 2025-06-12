@@ -45,29 +45,38 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <title>Desplegar CMS</title>
     <link rel="stylesheet" href="assets/css/estilos.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Selecciona un CMS para desplegar</h2>
-        <form method="post">
-            <select name="cms" required>
-                <option value="">Selecciona...</option>
-                <option value="wordpress">WordPress</option>
-                <option value="joomla">Joomla</option>
-                <option value="drupal">Drupal</option>
-                <option value="prestashop">PrestaShop</option>
-                <option value="moodle">Moodle</option>
-                <option value="octobercms">OctoberCMS</option>
-            </select>
-            <br><br>
-            <button type="submit">Desplegar CMS</button>
-        </form>
 
-        <?php if (!empty($mensaje)): ?>
-            <p class="<?= strpos($mensaje, 'correctamente') !== false ? 'success-message' : 'error-message' ?>">
-                <?= $mensaje ?>
-            </p>
-        <?php endif; ?>
-    </div>
+<?php include 'header.php'; ?>
+<?php include 'nav.php'; ?>
+
+<main class="container my-5">
+    <h2 class="text-center mb-4">Selecciona un CMS para desplegar</h2>
+
+    <form method="post" class="text-center">
+        <select name="cms" required class="form-select w-50 mx-auto mb-3">
+            <option value="">Selecciona...</option>
+            <option value="wordpress">WordPress</option>
+            <option value="joomla">Joomla</option>
+            <option value="drupal">Drupal</option>
+            <option value="prestashop">PrestaShop</option>
+            <option value="moodle">Moodle</option>
+            <option value="octobercms">OctoberCMS</option>
+        </select>
+        <button type="submit" class="btn btn-success">Desplegar CMS</button>
+    </form>
+
+    <?php if (!empty($mensaje)): ?>
+        <div class="mt-4 alert <?= strpos($mensaje, 'correctamente') !== false ? 'alert-success' : 'alert-danger' ?>">
+            <?= $mensaje ?>
+        </div>
+    <?php endif; ?>
+</main>
+
+<?php include 'footer.php'; ?>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

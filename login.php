@@ -14,8 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($lineausuario && password_verify($contrasena, $lineausuario['contrasena'])) {
         $_SESSION['id_usu'] = $lineausuario['id_usu'];
-        $_SESSION['usuario'] = $lineausuario['usuario'];
-header("Location: dashboard.php");
+        $_SESSION['usuario_nombre'] = $lineausuario['usuario'];
+        header("Location: dashboard.php");
         exit();
     } else {
         $mensaje = "Usuario o contraseña incorrectos.";
@@ -29,19 +29,48 @@ header("Location: dashboard.php");
     <meta charset="UTF-8">
     <title>Iniciar sesión</title>
     <link rel="stylesheet" href="assets/css/estilos.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <div class="login-container">
-        <h2>Iniciar sesión</h2>
-        <form method="POST">
-            <label>Correo electrónico:</label><br>
-            <input type="email" name="correo" required><br>
-            <label>Contraseña:</label><br>
-            <input type="password" name="contrasena" required><br>
-            <input type="submit" value="Entrar">
-        </form>
-        <p><?php echo htmlspecialchars($mensaje); ?></p>
-        <a href="recuperar.php">¿Olvidaste tu contraseña?</a>
+
+<?php include 'header.php'; ?>
+<?php include 'nav.php'; ?>
+
+<main class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+
+            <h2 class="mb-4 text-center">Iniciar sesión</h2>
+
+            <?php if (!empty($mensaje)): ?>
+                <div class="alert alert-danger"><?= htmlspecialchars($mensaje) ?></div>
+            <?php endif; ?>
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Correo electrónico:</label>
+                    <input type="email" name="correo" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Contraseña:</label>
+                    <input type="password" name="contrasena" class="form-control" required>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                </div>
+            </form>
+
+            <div class="mt-3 text-center">
+                <a href="recuperar.php">¿Olvidaste tu contraseña?</a>
+            </div>
+
+        </div>
     </div>
+</main>
+
+<?php include 'footer.php'; ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
