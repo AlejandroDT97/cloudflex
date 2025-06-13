@@ -38,9 +38,9 @@
 
     <!-- Descripción -->
     <section class="description">
-        <h2 class="text-center mb-4">¿Qué es CMSFlex?</h2>
+        <h2 class="text-center mb-4">¿Qué es CloudFlex?</h2>
         <p class="lead text-center">
-            CMSFlex es una plataforma desarrollada en PHP que permite a cualquier usuario desplegar sistemas CMS (como WordPress, Joomla, Drupal, etc.) con un solo clic, gracias a la integración con Ansible.
+            CloudFlex es una plataforma desarrollada en PHP que permite a cualquier usuario desplegar sistemas CMS (como WordPress, Joomla, Drupal, etc.) con un solo clic, gracias a la integración con Ansible.
         </p>
         <div class="text-center mt-4">
             <a href="deploy.php" class="btn btn-primary btn-lg">Desplegar un CMS</a>
