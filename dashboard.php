@@ -25,6 +25,7 @@ if (!isset($_SESSION['id_usu'])) {
 
     <div class="mt-4">
         <a href="deploy.php" class="btn btn-primary btn-lg me-3">Ir al despliegue de CMS</a>
+        <a href="perfil.php" class="btn btn-warning btn-lg me-3">Actualizar nombre</a>
         <a href="logout.php" class="btn btn-danger btn-lg">Cerrar sesión</a>
     </div>
 </main>

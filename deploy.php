@@ -73,6 +73,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <?= $mensaje ?>
         </div>
     <?php endif; ?>
+
+    <div class="text-center mt-4">
+        <a href="dashboard.php" class="btn btn-secondary">Volver atrás</a>
+    </div>
 </main>
 
 <?php include 'footer.php'; ?>
