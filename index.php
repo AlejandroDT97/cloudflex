@@ -51,7 +51,8 @@
     <section class="description">
         <h2 class="text-center mb-4">¿Qué es CloudFlex?</h2>
         <p class="lead text-center">
-            CloudFlex es una plataforma desarrollada en PHP que permite a cualquier usuario desplegar sistemas CMS (como WordPress, Joomla, Drupal, etc.) con un solo clic, gracias a la integración con Ansible.
+            CloudFlex es una plataforma educativa desarrollada en PHP que permite desplegar diferentes gestores de contenido (CMS) como WordPress, Joomla, Drupal, PrestaShop, Moodle y OctoberCMS.
+            Su principal objetivo es facilitar el aprendizaje y la práctica de despliegue automático usando Ansible, con una interfaz accesible y pensada para estudiantes y docentes.
         </p>
         <div class="text-center mt-4">
             <a href="deploy.php" class="btn btn-primary btn-lg">Desplegar un CMS</a>
