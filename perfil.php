@@ -3,6 +3,10 @@ session_start();
 require_once 'config/db.php';
 require_once 'correo.php';
 
+header("Cache-Control: no-cache, must-revalidate");
+header("Expires: Sat, 1 Jul 2000 05:00:00 GMT");
+
+
 if (!isset($_SESSION['id_usu'])) {
     header('Location: login.php');
     exit();

@@ -21,7 +21,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     putenv("ANSIBLE_CONFIG=/var/www/html/proyecto_web/ansible.cfg");
     putenv("ANSIBLE_LOCAL_TEMP=/tmp/ansible_tmp");
     putenv("HOME=/var/www");
+//start
+// Recibes los datos del formulario (ej: vía POST)
+$username = $_SESSION['usuario'];
 
+// Sanea los argumentos para la línea de comandos
+$safe_user = escapeshellarg($username);
+
+// Define la ruta a tu playbook y el inventario
+$playbook_path = "/var/www/html/proyecto_web/playbook/$cms.yml";
+$inventory_path = "/var/www/html/proyecto_web/inventario.ini";
+
+// Construye y ejecuta el comando de Ansible
+$command = "ansible-playbook -i {$inventory_path} {$playbook_path} --extra-vars 'db_user={$safe_user} db_password={$safe_user}'";
+
+// shell_exec ejecuta el comando y devuelve la salida
+$output = shell_exec($command);
+
+// Puedes mostrar la salida para depuración
+echo "<pre>$output</pre>";
+
+//end
     // Ejecutar el playbook
     $playbookPath = escapeshellcmd("/usr/bin/ansible-playbook -i /var/www/html/proyecto_web/inventario.ini /var/www/html/proyecto_web/playbooks/$cms.yml");
     exec($playbookPath . " 2>&1", $output, $status);
