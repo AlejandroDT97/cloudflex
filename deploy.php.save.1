@@ -17,18 +17,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cms = $_POST['cms'];
     $usuario_id = $_SESSION['id_usu'];
     $usuario = $_SESSION['usuario']; 
+
     $salt = bin2hex(random_bytes(6));
+    $dir_name = "$cms" . "_" . $salt;
 
     // Establecer variables de entorno
     putenv("ANSIBLE_CONFIG=/var/www/html/proyecto_web/ansible.cfg");
     putenv("ANSIBLE_LOCAL_TEMP=/tmp/ansible_tmp");
     putenv("HOME=/var/www");
 
-    $playbook = "/var/www/html/proyecto_web/ansible/playbooks/$cms.yml";
-
-
-   //Ejecutar el playbook
-    $playbookPath = escapeshellcmd("/usr/bin/ansible-playbook -i /var/www/html/proyecto_web/inventario.ini $playbook");
+    // Ejecutar el playbook
+    $playbookPath = escapeshellcmd("/usr/bin/ansible-playbook -i /var/www/html/proyecto_web/inventario.ini /var/www/html/proyecto_web/playbooks/$cms.yml");
     exec($playbookPath . " 2>&1", $output, $status);
 
     if ($status === 0) {

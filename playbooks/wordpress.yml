@@ -1,38 +1,57 @@
 ---
-- name: Instalar WordPress
+- name: Desplegar WordPress para usuario específico
   hosts: localhost
-  connection: local
-  become: true
-  gather_facts: false
-
+  gather_facts: no
   vars:
-    wp_dir: /var/www/html/wordpress
+    id_usuario: "{{ usuario_id }}"
+    salt: "{{ salt }}"
+    base_dir: "/var/www/html/proyecto_web/cms/{{ usuario_id }}/wordpress_{{ salt }}"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null length=12') }}"
 
   tasks:
+    - name: Crear directorio del CMS
+      file:
+        path: "{{ base_dir }}"
+        state: directory
+        mode: '0700'
+
     - name: Descargar WordPress
       get_url:
-        url: https://wordpress.org/latest.tar.gz
-        dest: /tmp/wordpress.tar.gz
+        url: https://wordpress.org/latest.zip 
+        dest: "{{ base_dir }}/wordpress.zip"
 
-    - name: Crear carpeta para Wordpress
-      file:
-        path: "{{ wp_dir }}"
-        state: directory
-        owner: apache
-        group: apache
-        mode: '0755'
-
-    - name: Extraer WordPress
+    - name: Descomprimir WordPress
       unarchive:
-        src: /tmp/wordpress.tar.gz
-        dest: "{{ wp_dir }}"
+        src: "{{ base_dir }}/wordpress.zip"
+        dest: "{{ base_dir }}"
         remote_src: yes
-        creates: "{{ wp_dir }}/wp-config-sample.php"
 
-    - name: Establecer permisos a WordPress
-      file:
-        path: "{{ wp_dir }}"
-        owner: apache
-        group: apache
-        recurse: yes
-        mode: '0755'
+    - name: Mover contenido a raíz del directorio
+      shell: |
+        mv {{ base_dir }}/wordpress/* {{ base_dir }}
+        rm -rf {{ base_dir }}/wordpress
+        rm {{ base_dir }}/wordpress.zip
+
+    - name: Crear base de datos
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+
+    - name: Crear usuario de base de datos
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL"
+        state: present
+
+    - name: Copiar wp-config.php
+      template:
+        src: templates/wp-config.php.j2
+        dest: "{{ base_dir }}/wp-config.php"
+
+    - name: Crear index.php para acceso controlado
+      copy:
+        content: "<?php include '../cms_proxy.php'; ?>"
+        dest: "{{ base_dir }}/index.php"
