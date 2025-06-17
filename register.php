@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['id_usu'] = $linea['id_usu'];
             $_SESSION['usuario'] = $linea['usuario'];
 
-            header("Location: dashboard.php");
+            header("Location: pago.php");
             exit();
         } catch (PDOException $e) {
             $mensaje = "Error al registrar usuario: " . $e->getMessage();

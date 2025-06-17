@@ -8,7 +8,10 @@ if (!isset($_SESSION['id_usu'])) {
     header("Location: login.php");
     exit();
 }
-
+if ($_SESSION ['pagado'] == 0) {
+    header("Location: pago.php");
+    exit();
+}
 require_once 'config/db.php';
 
 $mensaje = '';
@@ -16,7 +19,7 @@ $mensaje = '';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $cms = $_POST['cms'];
     $usuario_id = $_SESSION['id_usu'];
-    $usuario = $_SESSION['usuario']; 
+    $usuario = $_SESSION['usuario'];
     $salt = bin2hex(random_bytes(6));
 
     // Establecer variables de entorno
@@ -24,12 +27,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     putenv("ANSIBLE_LOCAL_TEMP=/tmp/ansible_tmp");
     putenv("HOME=/var/www");
 
-    $playbook = "/var/www/html/proyecto_web/ansible/playbooks/$cms.yml";
+    $playbook = "/var/www/html/proyecto_web/playbooks/$cms.yml";
 
+     $command = sprintf(
+        "/usr/bin/ansible-playbook -i /var/www/html/proyecto_web/inventario.ini %s " .
+        "-e 'destino=%s db_nombre=%s db_usuario=%s db_password=%s usuario_id=%s cms=%s salt=%s'",
+        escapeshellarg($playbook),
+        escapeshellarg($destino),
+        escapeshellarg($db_nombre),
+        escapeshellarg($db_usuario),
+        escapeshellarg($db_password),
+        escapeshellarg($usuario_id),
+        escapeshellarg($cms),
+        escapeshellarg($salt)
+    );
 
-   //Ejecutar el playbook
-    $playbookPath = escapeshellcmd("/usr/bin/ansible-playbook -i /var/www/html/proyecto_web/inventario.ini $playbook");
-    exec($playbookPath . " 2>&1", $output, $status);
+    // Ejecutar comando
+    exec($command . " 2>&1", $output, $status);
 
     if ($status === 0) {
         $stmt = $pdo->prepare("
@@ -50,13 +64,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta charset="UTF-8">
     <title>Desplegar CMS</title>
     <link rel="stylesheet" href="assets/css/estilos.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"  rel="stylesheet">
 </head>
 <body>
 
 <?php include 'header.php'; ?>
 <?php include 'nav.php'; ?>
-
 <main class="container my-5">
     <h2 class="text-center mb-4">Selecciona un CMS para desplegar</h2>
 
@@ -86,6 +99,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <?php include 'footer.php'; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>   
 </body>
 </html>

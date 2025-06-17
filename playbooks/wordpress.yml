@@ -1,57 +1,78 @@
 ---
-- name: Desplegar WordPress para usuario específico
+- name: Desplegar WordPress
   hosts: localhost
+  connection: local
+  # Eliminamos 'become: yes' de aquí para que no se aplique a todo
   gather_facts: no
+
   vars:
-    id_usuario: "{{ usuario_id }}"
-    salt: "{{ salt }}"
-    base_dir: "/var/www/html/proyecto_web/cms/{{ usuario_id }}/wordpress_{{ salt }}"
+    # Variables derivadas de los parámetros de entrada (usuario_id, salt)
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/wordpress_{{ salt }}"
     db_name: "cms_{{ usuario_id }}_{{ salt }}"
     db_user: "user_{{ usuario_id }}_{{ salt }}"
-    db_pass: "{{ lookup('password', '/dev/null length=12') }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
 
   tasks:
-    - name: Crear directorio del CMS
-      file:
-        path: "{{ base_dir }}"
-        state: directory
-        mode: '0700'
+    # Esta tarea requiere privilegios. La dejamos con su propio 'become'.
+    # Pero es mejor instalar las dependencias una sola vez manualmente.
+    - name: 1. Instalar dependencias en sistema basado en Red Hat
+      ansible.builtin.dnf:
+        name:
+          - php
+          - php-mysqlnd  # Nota: el nombre del paquete es php-mysqlnd
+          - php-gd
+          - php-curl
+          - php-xml
+          - unzip
+        state: present
+      become: yes
 
-    - name: Descargar WordPress
-      get_url:
-        url: https://wordpress.org/latest.zip 
-        dest: "{{ base_dir }}/wordpress.zip"
-
-    - name: Descomprimir WordPress
-      unarchive:
-        src: "{{ base_dir }}/wordpress.zip"
-        dest: "{{ base_dir }}"
-        remote_src: yes
-
-    - name: Mover contenido a raíz del directorio
-      shell: |
-        mv {{ base_dir }}/wordpress/* {{ base_dir }}
-        rm -rf {{ base_dir }}/wordpress
-        rm {{ base_dir }}/wordpress.zip
-
-    - name: Crear base de datos
-      mysql_db:
+    # ---- TAREAS DE BASE DE DATOS (SIN BECOME) ----
+    - name: 2. Crear la base de datos MariaDB
+      community.mysql.mysql_db:
         name: "{{ db_name }}"
         state: present
+        login_user: root
+        login_password: root # Usamos la contraseña del Vault
 
-    - name: Crear usuario de base de datos
-      mysql_user:
+    - name: 3. Crear el usuario de la base de datos
+      community.mysql.mysql_user:
         name: "{{ db_user }}"
         password: "{{ db_pass }}"
         priv: "{{ db_name }}.*:ALL"
+        host: localhost
         state: present
+        login_user: root
+        login_password: root # Usamos la contraseña del Vault
 
-    - name: Copiar wp-config.php
-      template:
+    # ---- TAREAS DE ARCHIVOS (SIN BECOME) ----
+    # Para que esto funcione, 'www-data' debe tener permisos sobre el directorio padre.
+    - name: 4. Crear el directorio raíz para WordPress
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: 5. Instalar tar y unzip (necesarios para descomprimir)
+      ansible.builtin.yum:
+        name:
+          - tar
+          - unzip
+        state: present
+      become: yes
+
+    - name: 6. Descargar y descomprimir WordPress
+      become: yes
+      ansible.builtin.unarchive:
+        src: https://wordpress.org/latest.tar.gz
+        dest: "{{ base_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: 7. Crear el archivo wp-config.php desde la plantilla
+      ansible.builtin.template:
         src: templates/wp-config.php.j2
         dest: "{{ base_dir }}/wp-config.php"
+        mode: '0640'
 
-    - name: Crear index.php para acceso controlado
-      copy:
-        content: "<?php include '../cms_proxy.php'; ?>"
-        dest: "{{ base_dir }}/index.php"
