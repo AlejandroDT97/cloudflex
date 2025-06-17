@@ -8,11 +8,23 @@ if (!isset($_SESSION['id_usu'])) {
     header("Location: login.php");
     exit();
 }
-if ($_SESSION ['pagado'] == 0) {
-    header("Location: pago.php");
-    exit();
-}
+
 require_once 'config/db.php';
+
+try {
+    $stmt = $pdo->prepare("SELECT pagado FROM USUARIO WHERE id_usu = ?");
+    $stmt->execute([$_SESSION['id_usu']]);
+    $usuario_pago = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    // Si el usuario existe y el campo 'pagado' es 0, redirigir a la página de pago
+    if ($usuario_pago && $usuario_pago['pagado'] == 0) {
+        header("Location: pago.php");
+        exit();
+    }
+} catch (PDOException $e) {
+    // Manejar errores de base de datos de forma segura
+    die("Error al verificar el estado del pago. Por favor, intente más tarde.");
+}
 
 $mensaje = '';
 
@@ -78,7 +90,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <option value="">Selecciona...</option>
             <option value="wordpress">WordPress</option>
             <option value="joomla">Joomla</option>
-            <option value="drupal">Drupal</option>
+            <option value="drupal2">Drupal</option>
             <option value="prestashop">PrestaShop</option>
             <option value="moodle">Moodle</option>
             <option value="octobercms">OctoberCMS</option>

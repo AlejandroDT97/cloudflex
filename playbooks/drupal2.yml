@@ -1,0 +1,72 @@
+- name: Desplegar Drupal
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars:
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/drupal_{{ salt }}"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
+
+  tasks:
+    - name: 1. Instalar dependencias necesarias para Drupal
+      ansible.builtin.dnf:
+        name:
+          - php
+          - php-mysqlnd
+          - php-gd
+          - php-xml
+          - php-curl
+          - php-json
+          - php-mbstring
+          - unzip
+          - tar
+        state: present
+      become: yes
+
+    - name: 2. Crear la base de datos MariaDB
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 3. Crear el usuario de la base de datos
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 4. Crear el directorio raíz para Drupal
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: 5. Descargar y descomprimir Drupal
+      become: yes
+      ansible.builtin.unarchive:
+        src: https://ftp.drupal.org/files/projects/drupal-10.2.2.tar.gz
+        dest: "{{ base_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: 6. Copiar archivo settings.php desde plantilla
+      ansible.builtin.template:
+        src: templates/settings.php.j2
+        dest: "{{ base_dir }}/sites/default/settings.php"
+        mode: '0640'
+
+    - name: 7. Asegurar permisos adecuados para settings.php
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/sites/default/settings.php"
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        mode: '0640'
