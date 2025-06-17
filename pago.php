@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['pagado'] = 1;
 			// Guardar mensaje de éxito en la sesión para mostrarlo en el dashboard
                         $_SESSION['mensaje_exito'] = "¡Pago completado! Su cuenta ha sido activada correctamente.";
-                        enviarCorreo($correo, 'Confirmacion de Pago', "<p>Hola <strong>$usuario</strong>, Su pago ha sido realizado correactamente, le llegara una factura en los sigueintes dias.</p>");
+                        enviarCorreo($correo, 'Confirmacion de Pago', "<p>Hola<strong>$usuario</strong>, su pago ha sido realizado correctamente, le llegará una factura en los siguientes días.</p>");
                         // Redirigir al dashboard
                         header("Location: dashboard.php");
                         exit(); // Importante: detener la ejecución del script después de redirigir
