@@ -1,32 +1,96 @@
 ---
-- name: Instalar Drupal
+- name: Desplegar Drupal
   hosts: localhost
-  become: yes
+  connection: local
+  gather_facts: no
+
+  vars:
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/drupal_{{ salt }}"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
+
   tasks:
+    - name: 1. Instalar dependencias necesarias para Drupal
+      ansible.builtin.dnf:
+        name:
+          - php
+          - php-mysqlnd
+          - php-gd
+          - php-xml
+          - php-curl
+          - php-json
+          - php-mbstring
+          - unzip
+          - tar
+        state: present
+      become: yes
 
-    - name: Descargar Drupal
-      get_url:
-        url: https://ftp.drupal.org/files/projects/drupal-10.2.2.tar.gz
-        dest: /tmp/drupal.tar.gz
+    - name: 2. Crear la base de datos MariaDB
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: root
 
-    - name: Crear directorio de destino
-      file:
-        path: /var/www/html/drupal
+    - name: 3. Crear el usuario de la base de datos
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 4. Crear el directorio raíz para Drupal
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
         state: directory
-        owner: apache
-        group: apache
         mode: '0755'
 
-    - name: Extraer Drupal
-      unarchive:
-        src: /tmp/drupal.tar.gz
-        dest: /var/www/html/drupal
+    - name: 5. Descargar y descomprimir Drupal
+      become: yes
+      ansible.builtin.unarchive:
+        src: https://ftp.drupal.org/files/projects/drupal-10.2.2.tar.gz
+        dest: "{{ base_dir }}"
         remote_src: yes
         extra_opts: [--strip-components=1]
 
-    - name: Establecer permisos a Drupal
-      file:
-        path: /var/www/html/drupal
-        recurse: yes
-        owner: apache
-        group: apache
+    - name: 5.5 Asegurarse de que sites/default existe y tiene permisos correctos
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/sites/default"
+        state: directory
+        mode: '0775'
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+
+    - name: 6. Asegurar que sites/default es escribible temporalmente
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/sites/default"
+        mode: '0775'
+
+    - name: 7. Crear el archivo settings.php desde la plantilla
+      ansible.builtin.template:
+        src: templates/settings.php.j2
+        dest: "{{ base_dir }}/sites/default/settings.php"
+        mode: '0640'
+
+    - name: 8. Crear directorio 'files' con permisos adecuados
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/sites/default/files"
+        state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        mode: '0775'
+
+    - name: 9. Restaurar permisos seguros a sites/default
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/sites/default"
+        mode: '0555'
+

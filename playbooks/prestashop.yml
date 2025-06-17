@@ -1,34 +1,76 @@
 ---
-- name: Instalar PrestaShop
+- name: Desplegar PrestaShop
   hosts: localhost
   connection: local
-  become: true
+  gather_facts: no
 
   vars:
-    ps_dir: /var/www/html/prestashop
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/prestashop_{{ salt }}"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
 
   tasks:
-    - name: Descargar PrestaShop
-      get_url:
-        url: https://github.com/PrestaShop/PrestaShop/releases/download/8.1.4/prestashop_8.1.4.zip
-        dest: /tmp/prestashop.zip
+    - name: 1. Instalar dependencias necesarias para PrestaShop
+      become: yes
+      ansible.builtin.dnf:
+        name:
+          - php
+          - php-mysqlnd
+          - php-gd
+          - php-xml
+          - php-mbstring
+          - php-json
+          - php-intl
+          - php-curl
+          - unzip
+          - tar
+        state: present
 
-    - name: Crear directorio para PrestaShop
-      file:
-        path: "{{ ps_dir }}"
+    - name: 2. Crear la base de datos MariaDB
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 3. Crear el usuario de la base de datos
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 4. Crear el directorio raíz para PrestaShop
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
         state: directory
-
-    - name: Extraer PrestaShop
-      unarchive:
-        src: /tmp/prestashop.zip
-        dest: "{{ ps_dir }}"
-        remote_src: yes
-        creates: "{{ ps_dir }}/index.php"
-
-    - name: Establecer permisos a PrestaShop
-      file:
-        path: "{{ ps_dir }}"
-        owner: apache
-        group: apache
-        recurse: yes
         mode: '0755'
+
+    - name: 5. Descargar PrestaShop 9.0 desde SourceForge
+      become: yes
+      ansible.builtin.get_url:
+        url: "https://downloads.sourceforge.net/prestashop.mirror/9.0.0/PrestaShop%209.0.0%20source%20code.zip"
+        dest: "/tmp/prestashop.zip"
+
+    - name: 6. Descomprimir PrestaShop
+      become: yes
+      ansible.builtin.unarchive:
+        src: "/tmp/prestashop.zip"
+        dest: "{{ base_dir }}"
+        remote_src: no
+
+    - name: 7. Dar permisos correctos a PrestaShop
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
+        state: directory
+        recurse: yes
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        mode: '0755'
+

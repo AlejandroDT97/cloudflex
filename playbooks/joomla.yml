@@ -1,34 +1,79 @@
 ---
-- name: Instalar Joomla
+- name: Desplegar Joomla
   hosts: localhost
   connection: local
-  become: true
+  gather_facts: no
 
   vars:
-    cms_dir: /var/www/html/joomla
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/joomla_{{ salt }}"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
 
   tasks:
-    - name: Descargar Joomla
-      get_url:
-        url: https://downloads.joomla.org/cms/joomla4/4-4-1/Joomla_4-4-1-Stable-Full_Package.zip?format=zip
-        dest: /tmp/joomla.zip
+    - name: 1. Instalar dependencias necesarias para Joomla
+      become: yes
+      ansible.builtin.dnf:
+        name:
+          - php
+          - php-mysqlnd
+          - php-gd
+          - php-xml
+          - php-mbstring
+          - php-json
+          - unzip
+          - tar
+        state: present
 
-    - name: Crear directorio de destino
-      file:
-        path: "{{ cms_dir }}"
+    - name: 2. Crear la base de datos MariaDB
+      community.mysql.mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 3. Crear el usuario de la base de datos
+      community.mysql.mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: root
+
+    - name: 4. Crear el directorio raíz para Joomla
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
         state: directory
-
-    - name: Extraer Joomla
-      unarchive:
-        src: /tmp/joomla.zip
-        dest: "{{ cms_dir }}"
-        remote_src: yes
-        creates: "{{ cms_dir }}/index.php"
-
-    - name: Establecer permisos a Joomla
-      file:
-        path: "{{ cms_dir }}"
-        owner: apache
-        group: apache
-        recurse: yes
         mode: '0755'
+
+    - name: 5. Descargar y descomprimir Joomla
+      become: yes
+      ansible.builtin.unarchive:
+        src: https://downloads.joomla.org/cms/joomla5/5-0-3/Joomla_5-0-3-Stable-Full_Package.tar.gz?format=gz
+        dest: "{{ base_dir }}"
+        remote_src: yes
+
+    - name: 6. Asegurar que configuration.php puede ser creado
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}/configuration.php"
+        state: touch
+        mode: '0664'
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+
+    - name: 7. Asegurar que carpeta logs y tmp existen
+      become: yes
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        mode: '0775'
+      loop:
+        - "{{ base_dir }}/logs"
+        - "{{ base_dir }}/tmp"
+

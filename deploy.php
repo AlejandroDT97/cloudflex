@@ -59,13 +59,42 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($status === 0) {
         $stmt = $pdo->prepare("
-            INSERT INTO REGISTRO (id_usu, id_cms, fecha_alta)
-            VALUES (?, (SELECT id_cms FROM CMS WHERE nombre = ?), CONVERT_TZ(NOW(), '+00:00', '+02:00'))
+            INSERT INTO REGISTRO (id_usu, id_cms, fecha_alta, codigo_directorio)
+            VALUES (?, (SELECT id_cms FROM CMS WHERE nombre = ?), CONVERT_TZ(NOW(), '+00:00', '+02:00'), ?)
         ");
-        $stmt->execute([$usuario_id, $cms]);
+        $stmt->execute([$usuario_id, $cms, $salt]);
+
+        // Ruta del CMS desplegado
+        $cms_dir = "/var/www/html/proyecto_web/userscms/{$usuario_id}/{$cms}_{$salt}";
+        $htpasswd_path = $cms_dir . '/.htpasswd';
+        $htaccess_path = $cms_dir . '/.htaccess';
+
+        // Usuario y contraseña en texto plano (debes tener la contraseña original)
+        $cms_user = $_SESSION['usuario'];
+        $cms_pass = $_SESSION['password']; // Debes guardar la contraseña en sesión al iniciar
+
+        // Genera el hash Apache MD5 para .htpasswd
+        $encrypted_pass = crypt($cms_pass, '$apr1$' . substr(md5(uniqid()), 0, 8));
+
+        // Crea el archivo .htpasswd
+        file_put_contents($htpasswd_path, "$cms_user:$encrypted_pass\n");
+
+        // Crea el archivo .htaccess
+        file_put_contents($htaccess_path, <<<HTA
+AuthType Basic
+AuthName "Zona protegida"
+AuthUserFile $htpasswd_path
+Require valid-user
+HTA
+        );
+
+        // Construye la URL del CMS desplegado
+        $cms_url = "userscms/{$usuario_id}/{$cms}_{$salt}/";
         $mensaje = "Despliegue de $cms realizado correctamente.";
+        $mostrar_botones = true;
     } else {
         $mensaje = "Error al desplegar $cms:<br><pre>" . htmlspecialchars(implode("\n", $output)) . "</pre>";
+        $mostrar_botones = false;
     }
 }
 ?>
@@ -90,7 +119,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <option value="">Selecciona...</option>
             <option value="wordpress">WordPress</option>
             <option value="joomla">Joomla</option>
-            <option value="drupal2">Drupal</option>
+            <option value="drupal">Drupal</option>
             <option value="prestashop">PrestaShop</option>
             <option value="moodle">Moodle</option>
             <option value="octobercms">OctoberCMS</option>
@@ -104,6 +133,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     <?php endif; ?>
 
+    <?php if (!empty($mostrar_botones) && $mostrar_botones): ?>
+        <div class="text-center mt-4">
+            <a href="<?= htmlspecialchars($cms_url) ?>" class="btn btn-primary" target="_blank">Ir a mi CMS</a>
+            <a href="registro.php" class="btn btn-secondary">Ver mis CMS desplegados</a>
+        </div>
+    <?php endif; ?>
+
     <div class="text-center mt-4">
         <a href="dashboard.php" class="btn btn-secondary">Volver atrás</a>
     </div>
@@ -111,6 +147,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 <?php include 'footer.php'; ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>   
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

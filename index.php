@@ -18,7 +18,7 @@
 
     <!-- Galería -->
     <section class="gallery text-center mb-5">
-        <h2 class="mb-4">Galería de CMS desplegados</h2>
+        <h2 class="mb-4">Galería de CMS disponibles</h2>
         <div class="row g-4 justify-content-center">
             <div class="col-6 col-md-4 col-lg-2">
                 <img src="imagenes/wordpress.png" alt="WordPress" class="img-fluid shadow-sm rounded" style="max-height: 100px;">

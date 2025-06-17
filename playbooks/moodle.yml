@@ -1,96 +1,115 @@
 ---
-- name: Instalar y configurar Moodle
+- name: Desplegar Moodle
   hosts: localhost
   connection: local
-  become: true
+  gather_facts: no
 
   vars:
-    moodle_dir: /var/www/html/moodle
-    moodle_zip: /tmp/moodle.zip
-    ansible_python_interpreter: /usr/bin/python3
-    db_root_user: root
-    db_root_pass: root1234
-    db_user: adminmoodle
-    db_pass: admin1234
-    db_name: moodle
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/moodle_{{ salt }}"
+    moodledata_dir: "{{ base_dir }}/moodledata"
+    db_name: "cms_{{ usuario_id }}_{{ salt }}"
+    db_user: "user_{{ usuario_id }}_{{ salt }}"
+    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    web_user: "apache"
+    moodle_url: "http://localhost/userscms/{{ usuario_id }}/moodle_{{ salt }}"
+    admin_user: "admin"
+    admin_pass: "Admin1234!"
+    admin_email: "admin@example.com"
 
   tasks:
-    - name: Comprobar ruta de Python usada
-      command: which python3
-      register: python_path
-
-    - debug:
-        var: python_path.stdout
-
-    - name: Instalar dependencias necesarias (sin curl)
-      dnf:
+    - name: 1. Instalar dependencias de Moodle
+      become: yes
+      ansible.builtin.dnf:
         name:
-          - httpd
           - php
           - php-mysqlnd
           - php-xml
-          - php-curl
-          - php-zip
           - php-intl
-          - php-gd
+          - php-zip
           - php-soap
+          - php-opcache
           - php-mbstring
+          - php-gd
+          - php-curl
           - unzip
-          - mariadb105-server
+          - git
+          - mariadb-server
+          - mariadb
         state: present
 
-    - name: Iniciar y habilitar MariaDB
-      service:
+    - name: 1.b Iniciar y habilitar MariaDB
+      become: yes
+      ansible.builtin.service:
         name: mariadb
         state: started
-        enabled: yes
+        enabled: true
 
-    - name: Crear base de datos de Moodle
+    - name: 2. Crear la base de datos MariaDB
       community.mysql.mysql_db:
         name: "{{ db_name }}"
         state: present
-        login_user: "{{ db_root_user }}"
-        login_password: "{{ db_root_pass }}"
+        login_user: root
+        login_password: root
 
-    - name: Crear usuario de base de datos para Moodle
+    - name: 3. Crear el usuario de la base de datos
       community.mysql.mysql_user:
         name: "{{ db_user }}"
         password: "{{ db_pass }}"
-        priv: "{{ db_name }}.*:ALL PRIVILEGES"
+        priv: "{{ db_name }}.*:ALL"
         host: localhost
         state: present
-        login_user: "{{ db_root_user }}"
-        login_password: "{{ db_root_pass }}"
+        login_user: root
+        login_password: root
 
-    - name: Crear directorio para Moodle
-      file:
-        path: "{{ moodle_dir }}"
+    - name: 4. Crear el directorio raíz de Moodle
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
         state: directory
         mode: '0755'
 
-    - name: Descargar Moodle desde GitHub
-      get_url:
-        url: https://github.com/moodle/moodle/archive/refs/tags/v401.zip
-        dest: "{{ moodle_zip }}"
-        headers:
-          User-Agent: "Mozilla/5.0"
+    - name: 5. Descargar Moodle desde GitHub
+      become: yes
+      ansible.builtin.git:
+        repo: 'https://github.com/moodle/moodle.git'
+        dest: "{{ base_dir }}"
+        version: 'MOODLE_411_STABLE'
 
-    - name: Extraer Moodle
-      unarchive:
-        src: "{{ moodle_zip }}"
-        dest: "{{ moodle_dir }}"
-        remote_src: yes
-        extra_opts: [--strip-components=1]
+    - name: 6. Crear el directorio moodledata
+      become: yes
+      ansible.builtin.file:
+        path: "{{ moodledata_dir }}"
+        state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        mode: '0770'
 
-    - name: Establecer permisos a Moodle
-      file:
-        path: "{{ moodle_dir }}"
-        owner: apache
-        group: apache
+    - name: 7. Dar permisos a la raíz de Moodle
+      become: yes
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
         recurse: yes
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
         mode: '0755'
 
-    - name: Reiniciar Apache
-      service:
-        name: httpd
-        state: restarted
+    - name: 8. Instalar Moodle desde CLI
+      become: yes
+      become_user: "{{ web_user }}"
+      ansible.builtin.command: >
+        php {{ base_dir }}/admin/cli/install.php
+        --non-interactive
+        --agree-license
+        --wwwroot={{ moodle_url }}
+        --dataroot={{ moodledata_dir }}
+        --dbtype=mariadb
+        --dbname={{ db_name }}
+        --dbuser={{ db_user }}
+        --dbpass={{ db_pass }}
+        --fullname="Sitio Moodle {{ usuario_id }}"
+        --shortname="Moodle {{ usuario_id }}"
+        --adminuser={{ admin_user }}
+        --adminpass={{ admin_pass }}
+        --adminemail={{ admin_email }}
+      environment:
+        PATH: "/usr/bin:{{ ansible_env.PATH }}"
+
