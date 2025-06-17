@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     
                     <button type="submit" class="btn btn-primary w-100 mb-3">Realizar Pago</button>
-                    <a href="dashboard.php" class="btn btn-secondary w-100">Volver al Dashboard</a>
+                    <a href="dashboard.php" class="btn btn-secondary w-100">Volver atrás</a>
                 </form>
             </div>
         </div>
