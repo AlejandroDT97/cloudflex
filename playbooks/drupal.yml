@@ -5,92 +5,91 @@
   gather_facts: no
 
   vars:
-    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/drupal_{{ salt }}"
-    db_name: "cms_{{ usuario_id }}_{{ salt }}"
-    db_user: "user_{{ usuario_id }}_{{ salt }}"
-    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
+    # Versión de Drupal a instalar. Puedes cambiarla fácilmente aquí.
+    drupal_version: "10.3.0"
     web_user: "apache"
+    # La ruta base correcta que establecimos
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/{{ cms }}_{{ salt }}"
 
   tasks:
-    - name: 1. Instalar dependencias necesarias para Drupal
-      ansible.builtin.dnf:
-        name:
-          - php
-          - php-mysqlnd
-          - php-gd
-          - php-xml
-          - php-curl
-          - php-json
-          - php-mbstring
-          - unzip
-          - tar
-        state: present
-      become: yes
-
-    - name: 2. Crear la base de datos MariaDB
+    # --- Las tareas de base de datos son idénticas ---
+    - name: 1. Crear la base de datos MariaDB
       community.mysql.mysql_db:
-        name: "{{ db_name }}"
+        name: "{{ db_nombre }}"
         state: present
         login_user: root
         login_password: root
 
-    - name: 3. Crear el usuario de la base de datos
+    - name: 2. Crear el usuario de la base de datos
       community.mysql.mysql_user:
-        name: "{{ db_user }}"
+        name: "{{ db_usuario }}"
         password: "{{ db_pass }}"
-        priv: "{{ db_name }}.*:ALL"
+        priv: "{{ db_nombre }}.*:ALL"
         host: localhost
         state: present
         login_user: root
         login_password: root
 
-    - name: 4. Crear el directorio raíz para Drupal
+    # --- Las tareas de archivos son específicas para Drupal ---
+    - name: 3. Crear el directorio raíz para Drupal
       ansible.builtin.file:
         path: "{{ base_dir }}"
         state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
         mode: '0755'
+      become: yes
 
-    - name: 5. Descargar y descomprimir Drupal
+    - name: 4. Descargar y descomprimir Drupal
       become: yes
       ansible.builtin.unarchive:
-        src: https://ftp.drupal.org/files/projects/drupal-10.2.2.tar.gz
+        src: "https://ftp.drupal.org/files/projects/drupal-{{ drupal_version }}.tar.gz"
         dest: "{{ base_dir }}"
         remote_src: yes
         extra_opts: [--strip-components=1]
 
-    - name: 5.5 Asegurarse de que sites/default existe y tiene permisos correctos
-      become: yes
-      ansible.builtin.file:
-        path: "{{ base_dir }}/sites/default"
-        state: directory
-        mode: '0775'
+    - name: 5. Crear el archivo settings.php a partir del default
+      ansible.builtin.copy:
+        src: "{{ base_dir }}/sites/default/default.settings.php"
+        dest: "{{ base_dir }}/sites/default/settings.php"
+        remote_src: yes # Importante: indica que el origen está en la máquina remota
         owner: "{{ web_user }}"
         group: "{{ web_user }}"
-
-    - name: 6. Asegurar que sites/default es escribible temporalmente
+        mode: '0644' # Lo hacemos legible y escribible para el propietario
       become: yes
-      ansible.builtin.file:
-        path: "{{ base_dir }}/sites/default"
-        mode: '0775'
 
-    - name: 7. Crear el archivo settings.php desde la plantilla
-      ansible.builtin.template:
-        src: templates/settings.php.j2
-        dest: "{{ base_dir }}/sites/default/settings.php"
-        mode: '0640'
+    - name: 6. Añadir la configuración de la base de datos y el hash_salt a settings.php
+      ansible.builtin.blockinfile:
+        path: "{{ base_dir }}/sites/default/settings.php"
+        block: |
+          $databases['default']['default'] = [
+            'database' => '{{ db_nombre }}',
+            'username' => '{{ db_usuario }}',
+            'password' => '{{ db_pass }}',
+            'host' => 'localhost',
+            'port' => '3306',
+            'driver' => 'mysql',
+            'prefix' => '',
+            'collation' => 'utf8mb4_general_ci',
+          ];
+          $settings['hash_salt'] = '{{ drupal_hash_salt }}';
+        marker: "# CONFIGURACIÓN AÑADIDA POR ANSIBLE"
+      become: yes # Se ejecuta como el usuario que corre el playbook, que tiene permisos sobre el archivo
 
-    - name: 8. Crear directorio 'files' con permisos adecuados
-      become: yes
+    - name: 7. Crear el directorio de archivos de Drupal y dar permisos
       ansible.builtin.file:
         path: "{{ base_dir }}/sites/default/files"
         state: directory
         owner: "{{ web_user }}"
         group: "{{ web_user }}"
-        mode: '0775'
-
-    - name: 9. Restaurar permisos seguros a sites/default
+        mode: '0775' # Permisos de escritura para el instalador
       become: yes
-      ansible.builtin.file:
-        path: "{{ base_dir }}/sites/default"
-        mode: '0555'
 
+    - name: 8. Asegurar que todos los archivos pertenezcan al usuario web (final)
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
+        state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        recurse: yes
+      become: yes

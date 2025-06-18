@@ -7,10 +7,9 @@
 
   vars:
     # Variables derivadas de los parámetros de entrada (usuario_id, salt)
-    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/wordpress_{{ salt }}"
+    base_dir: "/var/www/html/proyecto_web/userscms/{{ usuario_id }}/{{cms}}_{{ salt }}"
     db_name: "cms_{{ usuario_id }}_{{ salt }}"
     db_user: "user_{{ usuario_id }}_{{ salt }}"
-    db_pass: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=20') }}"
     web_user: "apache"
 
   tasks:
@@ -52,7 +51,11 @@
       ansible.builtin.file:
         path: "{{ base_dir }}"
         state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
         mode: '0755'
+        recurse: yes
+      become: yes
 
     - name: 5. Instalar tar y unzip (necesarios para descomprimir)
       ansible.builtin.yum:
@@ -76,3 +79,11 @@
         dest: "{{ base_dir }}/wp-config.php"
         mode: '0640'
 
+    - name: 8. Asegurar que todos los archivos pertenezcan al usuario web
+      ansible.builtin.file:
+        path: "{{ base_dir }}"
+        state: directory
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        recurse: yes # La opción clave: aplica los permisos a todo lo que hay dentro
+      become: yes

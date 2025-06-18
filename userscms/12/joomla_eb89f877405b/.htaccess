@@ -1,4 +1,0 @@
-AuthType Basic
-AuthName "Zona protegida"
-AuthUserFile /var/www/html/proyecto_web/userscms/12/joomla_eb89f877405b/.htpasswd
-Require valid-user

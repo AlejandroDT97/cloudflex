@@ -35,15 +35,7 @@
             <div class="col-6 col-md-4 col-lg-2">
                 <img src="imagenes/prestashop.png" alt="PrestaShop" class="img-fluid shadow-sm rounded" style="max-height: 100px;">
                 <p class="mt-2 fw-semibold">PrestaShop</p>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <img src="imagenes/moodle.png" alt="Moodle" class="img-fluid shadow-sm rounded" style="max-height: 100px;">
-                <p class="mt-2 fw-semibold">Moodle</p>
-            </div>
-            <div class="col-6 col-md-4 col-lg-2">
-                <img src="imagenes/octobercms.png" alt="OctoberCMS" class="img-fluid shadow-sm rounded" style="max-height: 100px;">
-                <p class="mt-2 fw-semibold">OctoberCMS</p>
-            </div>
+	    </div>
         </div>
     </section>
 
